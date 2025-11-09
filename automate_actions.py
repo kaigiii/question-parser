@@ -237,7 +237,13 @@ class ActionAutomator:
         self.click(300, 750, interval=0.5)
         if self.should_stop:
             return
-        
+
+        # 點擊位置 8 空點
+        # TODO: 請填入座標 (x, y)
+        self.click(1100, 400, interval=0.5)
+        if self.should_stop:
+            return
+            
         # 按 Ctrl+F (Mac: Cmd+F) 搜尋
         self.press_key_combination(self.modifier_key, 'f', interval=0.5)
         if self.should_stop:

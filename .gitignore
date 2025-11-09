@@ -45,6 +45,6 @@ ENV/
 *.swo
 *~
 
-# 輸出檔案（可選，如果需要保留可移除）
-# parsed_questions_csv/
+# 輸出檔案
+parsed_questions_csv/
 
