@@ -43,17 +43,32 @@ class ActionAutomator:
             self.modifier_key = Key.ctrl  # Windows 使用 Ctrl
     
     def on_key_press(self, key):
-        """監聽鍵盤按鍵，ESC 鍵停止循環"""
+        """監聽鍵盤按鍵，ESC 鍵立即停止"""
         if key == Key.esc:
-            print("\n\n偵測到 ESC 鍵，將在當前腳本執行完成後停止循環...")
+            print("\n\n偵測到 ESC 鍵，立即停止執行...")
             self.should_stop = True
             return False  # 停止監聽器
     
     def wait(self, seconds=None):
-        """等待指定時間，如果未指定則使用預設間隔"""
-        time.sleep(seconds if seconds is not None else self.action_interval)
+        """
+        等待指定時間，如果未指定則使用預設間隔
+        在等待過程中會持續檢測 ESC 鍵
+        
+        Args:
+            seconds: 等待時間（秒），如果為 None 則使用預設間隔
+        """
+        wait_time = seconds if seconds is not None else self.action_interval
+        # 將等待時間分成小段，每段檢查是否應該停止
+        step = 0.1  # 每 0.1 秒檢查一次
+        elapsed = 0
+        while elapsed < wait_time:
+            if self.should_stop:
+                return
+            sleep_time = min(step, wait_time - elapsed)
+            time.sleep(sleep_time)
+            elapsed += sleep_time
     
-    def click(self, x, y, button=Button.left):
+    def click(self, x, y, button=Button.left, interval=None):
         """
         點擊指定位置
         
@@ -61,63 +76,81 @@ class ActionAutomator:
             x: X 座標
             y: Y 座標
             button: 滑鼠按鍵（預設左鍵）
+            interval: 操作後的等待時間（秒），如果為 None 則使用預設間隔
         """
+        if self.should_stop:
+            return
         self.mouse_controller.position = (x, y)
         self.wait(0.1)  # 移動到位置後稍等一下
+        if self.should_stop:
+            return
         self.mouse_controller.click(button)
         print(f"點擊: ({x}, {y})")
-        self.wait()
+        self.wait(interval)
     
-    def press_key_combination(self, modifier, key):
+    def press_key_combination(self, modifier, key, interval=None):
         """
         按下鍵盤組合鍵
         
         Args:
             modifier: 修飾鍵（如 Ctrl 或 Cmd）
             key: 主要按鍵（可以是字符串或 Key 對象）
+            interval: 操作後的等待時間（秒），如果為 None 則使用預設間隔
         """
+        if self.should_stop:
+            return
         with self.keyboard_controller.pressed(modifier):
             self.keyboard_controller.press(key)
             self.keyboard_controller.release(key)
         key_name = key if isinstance(key, str) else str(key).replace('Key.', '')
         modifier_name = 'Cmd' if self.is_mac else 'Ctrl'
         print(f"按下: {modifier_name} + {key_name}")
-        self.wait()
+        self.wait(interval)
     
-    def type_text(self, text):
+    def type_text(self, text, interval=None):
         """
         輸入文字
         
         Args:
             text: 要輸入的文字
+            interval: 操作後的等待時間（秒），如果為 None 則使用預設間隔
         """
+        if self.should_stop:
+            return
         self.keyboard_controller.type(text)
         print(f"輸入: {text}")
-        self.wait()
+        self.wait(interval)
     
-    def paste_text(self, text):
+    def paste_text(self, text, interval=None):
         """
         將文字複製到剪貼簿並貼上
         
         Args:
             text: 要貼上的文字
+            interval: 操作後的等待時間（秒），如果為 None 則使用預設間隔
         """
+        if self.should_stop:
+            return
         pyperclip.copy(text)
-        self.press_key_combination(self.modifier_key, 'v')
+        self.press_key_combination(self.modifier_key, 'v', interval=0)  # 貼上後不等待，由外部控制
         print(f"貼上文字（長度: {len(text)} 字元）")
+        self.wait(interval)
     
-    def press_key(self, key):
+    def press_key(self, key, interval=None):
         """
         按下單一按鍵
         
         Args:
             key: 按鍵（可以是字符串或 Key 對象）
+            interval: 操作後的等待時間（秒），如果為 None 則使用預設間隔
         """
+        if self.should_stop:
+            return
         self.keyboard_controller.press(key)
         self.keyboard_controller.release(key)
         key_name = key if isinstance(key, str) else str(key).replace('Key.', '')
         print(f"按下: {key_name}")
-        self.wait()
+        self.wait(interval)
     
     def save_clipboard_to_file(self, filepath):
         """
@@ -174,31 +207,64 @@ class ActionAutomator:
     
     def run_automation(self):
         """執行自動化操作序列"""
+        # 確保鍵盤監聽器正在運行
+        if self.keyboard_listener is None:
+            self.should_stop = False
+            self.keyboard_listener = KeyboardListener(on_press=self.on_key_press)
+            self.keyboard_listener.start()
+        elif not self.keyboard_listener.is_alive():
+            # 如果監聽器已停止，重新啟動
+            self.should_stop = False
+            self.keyboard_listener = KeyboardListener(on_press=self.on_key_press)
+            self.keyboard_listener.start()
+        
         print("=" * 60)
         print("開始執行自動化操作...")
         print(f"作業系統: {platform.system()}")
-        print(f"操作間隔: {self.action_interval} 秒")
+        print(f"預設操作間隔: {self.action_interval} 秒")
+        print("每個步驟可單獨設定間隔時間")
+        print("按 ESC 鍵可隨時停止")
         print("=" * 60)
         
-        # 點擊位置 1
+        # 點擊位置 1 參賽按鈕
         # TODO: 請填入座標 (x, y)
-        self.click(100, 175)
+        self.click(100, 175, interval=0.5)
+        if self.should_stop:
+            return
         
-        # 點擊位置 2
+        # 點擊位置 2 模擬取卷練習
         # TODO: 請填入座標 (x, y)
-        self.click(300, 750)
+        self.click(300, 750, interval=0.5)
+        if self.should_stop:
+            return
         
-        # 點擊位置 3
+        # 按 Ctrl+F (Mac: Cmd+F) 搜尋
+        self.press_key_combination(self.modifier_key, 'f', interval=0.5)
+        if self.should_stop:
+            return
+
+        # 按 Ctrl+V (Mac: Cmd+V) 貼上 "01. " 選擇單元 "02. " "03. " "04. " ...
+        self.paste_text("01. ", interval=0.5)
+        if self.should_stop:
+            return
+
+        # 點擊位置 3 播放影片
         # TODO: 請填入座標 (x, y)
-        self.click(800, 800)
+        self.click(800, 800, interval=0.5)
+        if self.should_stop:
+            return
         
-        # 點擊位置 4
+        # 點擊位置 4 關閉影片
         # TODO: 請填入座標 (x, y)
-        self.click(1010, 20)
+        self.click(1010, 20, interval=0.5)
+        if self.should_stop:
+            return
         
-        # 點擊位置 5
+        # 點擊位置 5 打開console
         # TODO: 請填入座標 (x, y)
-        self.click(1240, 200)
+        self.click(1240, 200, interval=0.5)
+        if self.should_stop:
+            return
         
         # 按 Ctrl+V (Mac: Cmd+V) 貼上
         paste_content = """const yourAnswers = [
@@ -235,52 +301,75 @@ yourAnswers.forEach((answerValue, index) => {
         console.warn(`⚠️ 警告：第 ${questionIndex} 題找不到對應選項 (${answerValue})。`);
     }
 });"""
-        self.paste_text(paste_content)
+        self.paste_text(paste_content, interval=0.5)
+        if self.should_stop:
+            return
         
         # 按下 Enter
-        self.press_key(Key.enter)
+        self.press_key(Key.enter, interval=1)
+        if self.should_stop:
+            return
 
-        # 點擊位置 6
+        # 點擊位置 6 交卷
         # TODO: 請填入座標 (x, y)
-        self.click(980, 650)
+        self.click(980, 650, interval=1)
+        if self.should_stop:
+            return
         
-        # 點擊位置 7
+        # 點擊位置 7 進入element
         # TODO: 請填入座標 (x, y)
-        self.click(1170, 200)
+        self.click(1170, 200, interval=0.5)
+        if self.should_stop:
+            return
         
-        # 點擊位置 8
+        # 點擊位置 8 空點
         # TODO: 請填入座標 (x, y)
-        self.click(1100, 400)
+        self.click(1100, 400, interval=0.5)
+        if self.should_stop:
+            return
 
         # 按 Ctrl+F (Mac: Cmd+F) 搜尋
-        self.press_key_combination(self.modifier_key, 'f')
+        self.press_key_combination(self.modifier_key, 'f', interval=0.5)
+        if self.should_stop:
+            return
 
         # 按 Ctrl+V (Mac: Cmd+V) 貼上 "tbody"
-        self.paste_text("tbody")
+        self.paste_text("tbody", interval=0.5)
+        if self.should_stop:
+            return
 
-        # 點擊位置 8
+        # 點擊位置 8 點選需複製的內容
         # TODO: 請填入座標 (x, y)
-        self.click(1300, 445)
+        self.click(1300, 445, interval=0.5)
+        if self.should_stop:
+            return
         
         # 按 Ctrl+C (Mac: Cmd+C) 複製
-        self.press_key_combination(self.modifier_key, 'c')
-        
-        # 等待一下確保複製完成
-        self.wait(0.3)
+        self.press_key_combination(self.modifier_key, 'c', interval=0.5)
+        if self.should_stop:
+            return
         
         # 將剪貼簿內容儲存為 questions.html
         print("\n[步驟] 將剪貼簿內容儲存為 questions.html")
         self.save_clipboard_to_file('questions.html')
+        if self.should_stop:
+            return
         
         # 執行 parse_questions.py
         print("\n[步驟] 執行 parse_questions.py")
         self.run_script('parse_questions.py')
+        if self.should_stop:
+            return
         
         # 按 Ctrl+F (Mac: Cmd+F) 搜尋
-        self.press_key_combination(self.modifier_key, 'f')
+        self.press_key_combination(self.modifier_key, 'f', interval=0.5)
+        if self.should_stop:
+            return
 
-        # 按 Ctrl+V (Mac: Cmd+V) 貼上 "active"
-        self.paste_text("active")
+        # 按 Ctrl+V (Mac: Cmd+V) 貼上 "active" 回到最上面
+        self.paste_text("active", interval=0.5)
+        if self.should_stop:
+            return
 
         print("\n" + "=" * 60)
         print("✓ 自動化操作執行完成！")
