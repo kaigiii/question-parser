@@ -18,6 +18,13 @@
   - 記錄鍵盤按鍵操作
   - 自動保存為 JSON 格式
 
+- **自動化腳本** (`automate_actions.py`)
+  - 自動執行滑鼠點擊和鍵盤操作序列
+  - 支援 Mac 和 Windows 平台
+  - 自動將剪貼簿內容保存為 HTML 檔案
+  - 自動執行解析腳本
+  - 支援循環執行，按 ESC 鍵停止
+
 ## 安裝說明
 
 ### 系統需求
@@ -32,7 +39,7 @@ pip install -r requirements.txt
 或手動安裝：
 
 ```bash
-pip install beautifulsoup4 lxml pynput
+pip install beautifulsoup4 lxml pynput pyperclip
 ```
 
 ## 使用方法
@@ -80,12 +87,57 @@ python3 record_mouse_keyboard.py
 2. 按 `ESC` 鍵停止記錄
 3. 記錄會自動保存到 `actions.json`
 
+### 自動化腳本
+
+```bash
+python3 automate_actions.py
+```
+
+使用說明：
+
+1. **首次使用前必須調整座標位置**：
+   - 打開 `automate_actions.py` 檔案
+   - 找到所有標記為 `# TODO: 請填入座標 (x, y)` 的位置
+   - 根據您的螢幕和應用程式視窗，填入實際的滑鼠點擊座標
+   - **重要**：不同電腦、不同螢幕解析度、不同視窗大小，座標位置都會不同
+
+2. **執行流程**：
+   - 腳本會自動執行一系列滑鼠點擊和鍵盤操作
+   - 自動將剪貼簿內容保存為 `questions.html`
+   - 自動執行 `parse_questions.py` 解析腳本
+   - 完成後等待 2 秒，自動開始下一次循環
+   - 按 `ESC` 鍵可停止循環執行
+
+3. **自訂設定**：
+   - 可調整 `action_interval` 參數來改變操作間隔時間（預設 0.5 秒）
+   - 可修改 `run_loop()` 方法中的等待時間（預設 2 秒）
+
+#### 座標位置調整方法
+
+由於不同電腦的螢幕解析度、視窗大小、應用程式佈局都可能不同，**必須根據實際情況調整座標位置**：
+
+1. **使用記錄工具**：
+   ```bash
+   python3 record_mouse_keyboard.py
+   ```
+   執行後點擊目標位置，記錄會顯示座標，例如：`點擊: (100, 175)`
+
+2. **手動測試**：
+   - 在 `automate_actions.py` 中臨時添加 `print()` 語句
+   - 使用 Python 的 `pynput` 庫獲取當前滑鼠位置
+
+3. **注意事項**：
+   - Mac 和 Windows 的座標系統相同，但視窗位置可能不同
+   - 如果視窗大小改變，座標也需要重新調整
+   - 建議在固定視窗大小和位置下使用
+
 ## 專案結構
 
 ```
 .
 ├── parse_questions.py          # 核心功能：HTML 題庫解析器
 ├── record_mouse_keyboard.py    # 輔助功能：操作記錄工具
+├── automate_actions.py         # 自動化腳本：執行滑鼠鍵盤操作序列
 ├── requirements.txt            # Python 依賴套件
 ├── questions.html              # 範例輸入檔案
 ├── actions.json                # 操作記錄輸出檔案
@@ -100,6 +152,7 @@ python3 record_mouse_keyboard.py
 - **beautifulsoup4** (>=4.12.0): HTML 解析
 - **lxml** (>=4.9.0): BeautifulSoup 的解析器
 - **pynput** (>=1.7.6): 滑鼠和鍵盤監聽
+- **pyperclip** (>=1.8.2): 剪貼簿操作
 
 ## 答案識別規則
 
@@ -110,10 +163,18 @@ python3 record_mouse_keyboard.py
 
 ## 注意事項
 
+### 解析器注意事項
 - 確保 HTML 檔案使用 UTF-8 編碼
 - 題目格式應為表格（`<table>`）結構
 - 每個題目應包含題號、答案欄和題目內容欄位
 - 選項格式支援 `(1)`, `(2)`, `(3)`, `(4)` 標記或換行分隔
+
+### 自動化腳本注意事項
+- **重要**：不同電腦的螢幕解析度、視窗大小、應用程式佈局都不同，**必須根據實際情況調整座標位置**
+- 首次使用前，請先使用 `record_mouse_keyboard.py` 記錄實際的座標位置
+- 建議在固定視窗大小和位置下使用自動化腳本
+- 執行前請確保目標應用程式已開啟並準備好
+- 腳本會自動循環執行，按 `ESC` 鍵可停止
 
 ## 授權
 
