@@ -3,9 +3,9 @@
 """
 parse_questions.py
 
-解析題庫 HTML（像使用者所貼的片段），並輸出 CSV（delimiter='|'）
+解析題庫 HTML（像使用者所貼的片段），並輸出 CSV（delimiter=','）
 
-輸出欄位：題目|選項1|選項2|選項3|選項4|答案
+輸出欄位：題目,選項1,選項2,選項3,選項4,答案
 
 使用說明：
   python3 parse_questions.py -i questions.html -o questions_output.csv
@@ -236,9 +236,9 @@ def get_next_filename(prefix, output_dir, file_format='csv'):
 def write_output(rows, output_path):
     output_path = Path(output_path)
     cols = ['題目', '選項1', '選項2', '選項3', '選項4', '答案']
-    # 使用 '|' 分隔的 csv
+    # 使用標準逗號 ',' 分隔的 CSV
     with output_path.open('w', encoding='utf-8-sig', newline='') as f:
-        writer = csv.writer(f, delimiter='|')
+        writer = csv.writer(f, delimiter=',')
         writer.writerow(cols)
         for r in rows:
             writer.writerow(r)
